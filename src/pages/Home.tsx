@@ -1,0 +1,137 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import {
+  TrendingUp,
+  SlidersHorizontal,
+  CalendarDays,
+  ArrowRight,
+  MapPin,
+  Users,
+  TriangleAlert,
+  MonitorCheck,
+} from "lucide-react";
+import { KpiCard } from "../components/ui/KpiCard";
+import { Card, CardHeader } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { useAlocacao } from "../state/AlocacaoContext";
+
+const FUNCOES = [
+  {
+    to: "/previsoes",
+    icon: TrendingUp,
+    numero: "01",
+    title: "Previsões IA",
+    description: "Crescimento previsto por região ao longo de todo o horizonte de previsão, com alerta de limiar de poda.",
+  },
+  {
+    to: "/otimizacao",
+    icon: SlidersHorizontal,
+    numero: "02",
+    title: "Otimização",
+    description: "Gera o cronograma completo de poda, cobrindo todo o horizonte de previsão, via solver PuLP.",
+  },
+  {
+    to: "/cronograma",
+    icon: CalendarDays,
+    numero: "03",
+    title: "Cronograma",
+    description: "Visualiza a grade de alocação equipe × dia produzida pela otimização.",
+  },
+  {
+    to: "/monitoramento",
+    icon: MonitorCheck,
+    numero: "04",
+    title: "Monitoramento",
+    description: "Acompanha em tempo real quais locais as equipes já marcaram como concluídos.",
+  },
+];
+
+export function Home() {
+  const { resultado } = useAlocacao();
+
+  const status = useMemo(() => {
+    if (!resultado) return null;
+    const equipes = new Set(resultado.alocacoes.map((a) => a.equipeId));
+    const dias = new Set(resultado.alocacoes.map((a) => a.dia));
+    const totalLocais = resultado.alocacoes.reduce((soma, a) => soma + a.locais.length, 0);
+    return {
+      totalLocais,
+      totalEquipes: equipes.size,
+      totalDias: dias.size,
+      naoAlocados: resultado.naoAlocados.length,
+      periodo: resultado.periodo,
+    };
+  }, [resultado]);
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-8 py-4 text-center sm:gap-10 sm:py-8 lg:min-h-[calc(100vh-6rem)] lg:gap-12 lg:py-10">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">PrognosisHerba</p>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight text-fg sm:text-3xl lg:text-4xl">O que você quer fazer?</h1>
+        <p className="mt-2.5 text-sm text-fg-muted">Escolha uma das etapas do fluxo de manejo de poda.</p>
+      </div>
+
+      <div className="grid w-full max-w-5xl grid-cols-1 gap-4 text-left sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+        {FUNCOES.map(({ to, icon: Icon, numero, title, description }) => (
+          <Link
+            key={to}
+            to={to}
+            className="group flex flex-col rounded-2xl border border-border bg-bg-card p-5 transition sm:p-6 hover:border-primary/40 hover:bg-bg-card-raised hover:shadow-[0_0_0_1px_rgba(166,255,0,0.15),0_16px_32px_-16px_rgba(0,0,0,0.7)]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Icon size={22} />
+              </div>
+              <span className="font-mono-tabular text-xs text-fg-faint">{numero}</span>
+            </div>
+            <h2 className="mt-5 text-lg font-semibold text-fg">{title}</h2>
+            <p className="mt-1.5 flex-1 text-sm leading-relaxed text-fg-muted">{description}</p>
+            <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary opacity-70 transition group-hover:gap-2.5 group-hover:opacity-100">
+              Abrir <ArrowRight size={14} />
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="w-full max-w-5xl text-left">
+        <Card>
+          <CardHeader
+            title="Status ao vivo"
+            subtitle={
+              status
+                ? `Período: ${status.periodo.inicio} a ${status.periodo.fim}`
+                : "Nenhuma alocação foi gerada nesta sessão ainda"
+            }
+          />
+
+          {!status ? (
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-fg-muted">
+                Rode a Otimização a partir das previsões da IA para ver aqui a última alocação gerada.
+              </p>
+              <Link to="/otimizacao">
+                <Button variant="secondary">Ir para Otimização</Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+                <KpiCard label="Locais alocados" value={String(status.totalLocais)} icon={<MapPin size={20} />} />
+                <KpiCard label="Equipes em campo" value={String(status.totalEquipes)} icon={<Users size={20} />} />
+                <KpiCard label="Dias úteis" value={String(status.totalDias)} icon={<CalendarDays size={20} />} />
+                <KpiCard
+                  label="Não alocados"
+                  value={String(status.naoAlocados)}
+                  icon={<TriangleAlert size={20} />}
+                />
+              </div>
+              <Link to="/cronograma" className="mt-4 inline-block">
+                <Button variant="secondary">Ver cronograma completo →</Button>
+              </Link>
+            </>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
